@@ -1,0 +1,30 @@
+# clear the info window
+clearinfo
+
+# input directory
+directory$ = "/Volumes/Shared/Experiments/Dave/BlockPL/Experiment 1/stimuli/Sounds/CAT/Original/"
+
+# output directory
+output$ = "/Users/David_Saltzman/Desktop/output/"
+
+# get list of files
+Create Strings as file list: "list", directory$ + "/*.wav"
+number_of_files = do("Get number of strings")
+
+# read first file (loop)
+for file from 1 to number_of_files
+	
+	select Strings list
+	soundName$ = Get string... file
+	soundName$ = soundName$ - ".wav"
+	Read from file... 'directory$''soundName$'.wav
+
+	selectObject("Sound 'soundName$'")
+	Scale intensity: 70
+	
+	Write to WAV file... 'output$''soundName$'.wav
+	select all
+	minus Strings list
+	do ("Remove")
+
+endfor

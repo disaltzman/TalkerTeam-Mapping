@@ -1,0 +1,106 @@
+# # ## ### ##### ########  #############  ##################### 
+# Praat Script
+## pad with silence to normalize signal duration
+#
+# Matthew Winn
+# August 2014
+#
+#
+# This script has been tweaked from its original version. 
+# Some lines have been commented out, and the longest duration
+# is manually set to 0.700 seconds.
+##################################
+##################### 
+############# 
+######## 
+#####
+###
+##
+#
+#
+form Pad silence
+comment Where do you want the padded silence to be added?
+choice method: 1
+       button before the sound
+       button after the sound
+       
+comment type in a suffix to uniquely identify the normalized sound
+   sentence suffix _padded
+       
+   boolean delete_originals 0
+endform
+
+clearinfo
+#print 'method'
+
+pause select all sounds to be used for this operation
+numberOfSelectedSounds = numberOfSelected ("Sound")
+
+# number the sounds
+   for thisSelectedSound to numberOfSelectedSounds
+	sound'thisSelectedSound' = selected("Sound",thisSelectedSound)
+   endfor
+
+# initialize longestDuration
+	longestDuration = 0.700
+	#longestDuration = 0
+
+
+# get duration of all sounds
+	for thisSound from 1 to numberOfSelectedSounds
+    	select sound'thisSound'
+		dur = Get total duration
+		#if dur > longestDuration
+	  	#longestDuration = dur
+		#endif
+			endfor
+
+# get the duration of each sound; if it's not the longest one, pad silence to match duraton to the longest one
+	for thisSound from 1 to numberOfSelectedSounds
+	    select sound'thisSound'
+		samplerate = Get sampling frequency
+		numChannels = Get number of channels
+		name$ = selected$("Sound")
+		dur = Get total duration
+		if dur < longestDuration
+			bufferDuration = longestDuration - dur
+			Create Sound from formula... buffer numChannels 0 bufferDuration samplerate 0
+			call appendBuffer 'name$' 'name$''suffix$' delete_originals
+		else
+		   select Sound 'name$'
+		   Copy... 'name$''suffix$'
+		endif
+	endfor
+
+
+
+procedure appendBuffer .name$ .newname$ .delete_original
+   if method = 2
+	select Sound '.name$'
+	plus Sound buffer
+	Concatenate
+	select Sound buffer
+	if .delete_original = 1
+	   plus Sound '.name$'
+	endif
+	Remove
+	select Sound chain
+	Rename... '.newname$'
+   endif
+   
+   if method = 1
+   	select Sound '.name$'
+   	Copy... temp
+   	select Sound buffer
+   	plus Sound temp
+   	Concatenate
+   	select Sound buffer
+	plus Sound temp
+	if .delete_original = 1
+	   plus Sound '.name$'
+	endif
+	Remove
+   	select Sound chain
+	Rename... '.newname$'
+   endif
+endproc

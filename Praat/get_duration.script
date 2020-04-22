@@ -1,0 +1,11 @@
+clearinfo
+n = numberOfSelected ("Sound")
+for i to n
+	sound [i] = selected ("Sound", i)
+endfor
+
+for i to n
+	selectObject: sound [i]
+	duration = Get total duration
+	appendInfoLine: duration
+endfor
