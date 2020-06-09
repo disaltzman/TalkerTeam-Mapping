@@ -20,10 +20,12 @@ library(lemon)
 # Analyses.
 library(afex)
 library(lme4)
-library(lmerTest)
 
 # df <- lapply(list.files(path = ".", pattern = "*.csv", all.files = FALSE,
 #                         full.names = FALSE, recursive = FALSE), read.csv, header=TRUE)
+
+# set WD to data folder.
+setwd("./data")
 
 # Read in files.
 file_names <- list.files(path = ".", pattern = "*.csv", all.files = FALSE,
@@ -175,37 +177,39 @@ levels(rt_summary_byGroup$exp) <- c("Experiment 1 \n Standard Design",
                             "Experiment 4 \n Targets produced by one talker on mixed trials \n and targets never serve as distractors")
 
 # Create behavioral data figure.
-behav_fig <- ggplot(rt_summary, aes(CondNum, corrected_rt, fill=Condition)) + 
+#behav_fig <- 
+ggplot(rt_summary, aes(CondNum, corrected_rt, fill=Condition)) + 
   geom_boxplot(aes(group=Condition,fill=Condition),width=0.4) +
   #geom_bar(stat="summary",width=0.4,aes(group=Condition,fill=Condition)) +
   geom_point(data=rt_summary,aes(x=xPos)) + 
   geom_line(data=rt_summary,aes(group=subject_nr,x=xPos),stat="summary") +
   #geom_errorbar(data=rt_summary_byGroup,aes(ymax=corrected_rt+ci, ymin = corrected_rt-ci), width = 0.2) + 
-  stat_summary(fun.y=mean, geom="point", shape=1, size=3) +
+  stat_summary(fun=mean, geom="point", shape=1, size=3) +
   scale_x_continuous("Condition",breaks=c(1,2),labels=c("Blocked","Mixed")) +
   scale_fill_manual(values=c("#ff6e26","#26b7ff")) + 
   facet_rep_wrap(.~exp,ncol=2,repeat.tick.labels=TRUE) +
   labs(y = "Reaction time (ms)") + coord_cartesian(ylim = c(375,725)) + 
   #dark_theme_gray(base_size = 18) + 
-  theme(legend.position = "none",strip.text = element_text(size = 18))
+  theme(legend.position = "none",strip.text = element_text(size = 16),text=element_text(size=18))
+
+ggsave("behav_fig.png",device="png",type="cairo",dpi="retina",width = 12, height = 8)
 
 # Create summary barplot of each experiment's MTPC.
 rt_differences <- rt[1:3] %>% spread(Condition, rt, drop=TRUE)
 rt_differences$diff <- rt_differences$Mixed-rt_differences$Blocked
 
-MTPC <- ggplot(rt_differences,aes(x=as.factor(exp),y=diff)) +
+#MTPC <- 
+ggplot(rt_differences,aes(x=as.factor(exp),y=diff)) +
   geom_bar(stat="identity") + labs(y="Multi-talker processing cost (ms)", x="Experiment") + 
-  theme(legend.position = "none") + coord_cartesian(ylim=c(0,30)) + 
+  theme(legend.position = "none",text=element_text(size=16)) + coord_cartesian(ylim=c(0,30)) + 
   geom_signif(xmin=1,xmax=1,y_position=23,tip_length=0,annotation ="***",textsize=8) +
   geom_signif(xmin=3,xmax=3,y_position=23,tip_length=0,annotation ="***",textsize=8)
 
-MTPC
-behav_fig
+ggsave("MTPC.png",device="png",type="cairo",dpi="retina")
 
 # Cowplot them together.
-cowAB <- plot_grid(NULL,MTPC,ncol=2,labels=c("A","B"))
-plot_grid(cowAB,behav_fig,labels="AUTO",ncol=1,rel_heights=c(0.6,1))
-ggsave("plot.pdf", ,dpi="retina",width = 11, height = 12, units = "in")
+# plot_grid(behav_fig,MTPC,labels="AUTO",ncol=1,rel_heights = c(2,1))
+# ggsave("plot.png",device="png",type="cairo",dpi="retina",width = 8, height = 10)
 
 # # Line plot of individual MTE
 # ggplot(rt_summary,aes(x=Condition,y=corrected_rt)) + geom_point() + 
