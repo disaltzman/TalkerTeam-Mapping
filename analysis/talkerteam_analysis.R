@@ -54,7 +54,14 @@ df <- select(df,-6:-7)
 df$gender <- ifelse(grepl("M_",df$current_stimulus),"Male","Female")
 
 # Create variable to indicate which experiment this was
-df$exp <- substr(df$subject_nr,1,1) #first digit of subject number indicates experiment number
+df$exp_orig <- substr(df$subject_nr,1,1) #first digit of subject number indicates experiment number
+
+# Renumbered experiments for manuscript
+df$exp_renum <- NA
+df$exp_renum[which(df$exp_orig == 1)] <- 1
+df$exp_renum[which(df$exp_orig == 2)] <- 4
+df$exp_renum[which(df$exp_orig == 3)] <- 3
+df$exp_renum[which(df$exp_orig == 4)] <- 2
 
 # Indicate which item number this was within a trial
 df$itemNo <- row(as.matrix(df$current_stimulus)) %% 16; df$itemNo[which(df$itemNo==0)] <- 16
@@ -118,7 +125,7 @@ critical.trials <- subset(na.omit(critical.trials),Target==trial_stimulus)
 
 # Calculate accuracy.
 performance <- df %>%
-  group_by(subject_nr,exp) %>%
+  group_by(subject_nr,exp_renum) %>%
   summarize(acc=mean(na.omit(accuracy)))
 
 exclude <- filter(performance,acc<=0.9)
@@ -132,12 +139,12 @@ df.goodSubj <- droplevels(df %>%
   
 # Average performance by experiment.
 avg.performance <- df.goodSubj %>%
-  group_by(exp) %>%
+  group_by(exp_renum) %>%
   summarize(acc=mean(na.omit(accuracy)))
 
 # Calculate reaction time by condition and talker.
 rt <- critical.trials %>%
-  group_by(exp, Condition) %>%
+  group_by(exp_renum, Condition) %>%
   summarise(rt=mean(corrected_rt),SD=sd(corrected_rt))
 
 #### Plots####
@@ -154,14 +161,14 @@ qqnorm(log(critical.trials$corrected_rt)); qqline(log(critical.trials$corrected_
 # Plotting prep
 # Mean RTs by subject
 rt_summary <- Rmisc::summarySE(data = critical.trials, measurevar = "corrected_rt", 
-                               groupvars = c("subject_nr","exp", "Condition"), na.rm = TRUE)
+                               groupvars = c("subject_nr","exp_renum", "Condition"), na.rm = TRUE)
 
-# Create variable with experiment labels.
-rt_summary$exp <- as.factor(rt_summary$exp)
-levels(rt_summary$exp) <- c("Experiment 1 \n Standard design",
-                                    "Experiment 2 \n Targets produced by one talker in mixed-talker trials",
+# Create variable with exp_renumeriment labels.
+rt_summary$exp_renum <- as.factor(rt_summary$exp_renum)
+levels(rt_summary$exp_renum) <- c("Experiment 1 \n Standard design",
+                                    "Experiment 2 \n Targets never recycled as distractors and \n targets produced by one talker on each mixed-talker trial",
                                   "Experiment 3 \n Targets never recycled as distractors",
-                                  "Experiment 4 \n Targets produced by one talker on mixed-talker trials \n and targets never recycled as distractors")
+                                  "Experiment 4 \n Targets produced by one talker on each mixed-talker trial")
 
 # For plotting purposes, create numeric version of condition and variable to allow for offsetting of points
 rt_summary$CondNum <- ifelse(rt_summary$Condition=="Blocked",1,2)
@@ -169,12 +176,12 @@ rt_summary$xPos <- ifelse(rt_summary$Condition=="Blocked",1.25,1.75)
 
 # Mean RTs by group to get CI's for error bar
 rt_summary_byGroup <- Rmisc::summarySE(data = critical.trials, measurevar = "corrected_rt",
-                                       groupvars = c("exp", "Condition"), na.rm = TRUE)
+                                       groupvars = c("exp_renum", "Condition"), na.rm = TRUE)
 rt_summary_byGroup$CondNum <- ifelse(rt_summary_byGroup$Condition=="Blocked",1,2)
-levels(rt_summary_byGroup$exp) <- c("Experiment 1 \n Standard Design",
-                            "Experiment 2 \n Targets produced by one talker on mixed trials",
-                            "Experiment 3 \n Targets never serve as distractors",
-                            "Experiment 4 \n Targets produced by one talker on mixed trials \n and targets never serve as distractors")
+levels(rt_summary_byGroup$exp_renum) <- c("Experiment 1 \n Standard design",
+                                          "Experiment 2 \n Targets never recycled as distractors and \n targets produced by one talker on each mixed-talker trial",
+                                          "Experiment 3 \n Targets never recycled as distractors",
+                                          "Experiment 4 \n Targets produced by one talker on each mixed-talker trial")
 
 # Create behavioral data figure.
 #behav_fig <- 
@@ -187,20 +194,20 @@ ggplot(rt_summary, aes(CondNum, corrected_rt, fill=Condition)) +
   stat_summary(fun=mean, geom="point", shape=1, size=3) +
   scale_x_continuous("Condition",breaks=c(1,2),labels=c("Blocked","Mixed")) +
   scale_fill_manual(values=c("#ff6e26","#26b7ff")) + 
-  facet_rep_wrap(.~exp,ncol=2,repeat.tick.labels=TRUE) +
+  facet_rep_wrap(.~exp_renum,ncol=2,repeat.tick.labels=TRUE) +
   labs(y = "Reaction time (ms)") + coord_cartesian(ylim = c(375,725)) + 
   #dark_theme_gray(base_size = 18) + 
   theme(legend.position = "none",strip.text = element_text(size = 16),text=element_text(size=18))
 
-ggsave("behav_fig.png",device="png",type="cairo",dpi="retina",width = 12, height = 8)
+ggsave("behav_fig.png",device="png",type="cairo",dpi="retina",width = 13.5, height = 9)
 
-# Create summary barplot of each experiment's MTPC.
+# Create summary barplot of each exp_renumeriment's MTPC.
 rt_differences <- rt[1:3] %>% spread(Condition, rt, drop=TRUE)
 rt_differences$diff <- rt_differences$Mixed-rt_differences$Blocked
 
 #MTPC <- 
-ggplot(rt_differences,aes(x=as.factor(exp),y=diff)) +
-  geom_bar(stat="identity") + labs(y="Multi-talker processing cost (ms)", x="Experiment") + 
+ggplot(rt_differences,aes(x=as.factor(exp_renum),y=diff)) +
+  geom_bar(stat="identity") + labs(y="Multi-talker processing cost (ms)", x="exp_renumeriment") + 
   theme(legend.position = "none",text=element_text(size=16)) + coord_cartesian(ylim=c(0,30)) + 
   geom_signif(xmin=1,xmax=1,y_position=23,tip_length=0,annotation ="***",textsize=8) +
   geom_signif(xmin=3,xmax=3,y_position=23,tip_length=0,annotation ="***",textsize=8)
@@ -214,16 +221,16 @@ ggsave("MTPC.png",device="png",type="cairo",dpi="retina")
 # # Line plot of individual MTE
 # ggplot(rt_summary,aes(x=Condition,y=corrected_rt)) + geom_point() + 
 #   geom_line(aes(group=subject_nr),stat="summary") + theme(legend.position="none") +
-#   facet_wrap(~exp) + labs(y = "Reaction time (ms)")
+#   facet_wrap(~exp_renum) + labs(y = "Reaction time (ms)")
  
-# rt_summary_byGroup$exp <- as.factor(rt_summary_byGroup$exp)
-# levels(rt_summary_byGroup$exp) <- c("Experiment 1 \n Standard Design", 
-#                                     "Experiment 2 \n Targets produced by one talker on mixed trials",
-#                                     "Experiment 3 \n Targets never serve as distractors",
-#                                     "Experiment 4 \n Targets produced by one talker on mixed trials \n and targets never serve as distractors")
+# rt_summary_byGroup$exp_renum <- as.factor(rt_summary_byGroup$exp_renum)
+# levels(rt_summary_byGroup$exp_renum) <- c("exp_renumeriment 1 \n Standard Design", 
+#                                     "exp_renumeriment 2 \n Targets produced by one talker on mixed trials",
+#                                     "exp_renumeriment 3 \n Targets never serve as distractors",
+#                                     "exp_renumeriment 4 \n Targets produced by one talker on mixed trials \n and targets never serve as distractors")
 # 
 # # Plotting
-# ggplot(rt_summary_byGroup, aes(Condition, corrected_rt)) + geom_boxplot() + facet_wrap(~exp, ncol = 2) +
+# ggplot(rt_summary_byGroup, aes(Condition, corrected_rt)) + geom_boxplot() + facet_wrap(~exp_renum, ncol = 2) +
 #   labs(y = "Reaction time (ms)") + ylim(350,700)
 # 
 # ggplot(rt_summary_byGroup, aes(Condition, corrected_rt)) + 
@@ -231,41 +238,41 @@ ggsave("MTPC.png",device="png",type="cairo",dpi="retina")
 #   geom_errorbar(aes(ymax = corrected_rt + ci, ymin = corrected_rt - ci), width = 0.2) + 
 #   geom_point(data=rt_summary,alpha=0.3) + 
 #   geom_line(data=rt_summary,aes(group=subject_nr),stat="summary",alpha=0.3) +
-#   facet_wrap(~exp, ncol = 2) +
+#   facet_wrap(~exp_renum, ncol = 2) +
 #   labs(y = "Reaction time (ms)") + coord_cartesian(ylim = c(375,700))
 
 #### Mixed effects models ####
 
-critical.trials$exp <- as.factor(critical.trials$exp)
+critical.trials$exp_renum <- as.factor(critical.trials$exp_renum)
 
 critical.trials$targRecyc <- NA
-critical.trials$targRecyc[critical.trials$exp == "1" | critical.trials$exp == "2"] <- "Yes"
-critical.trials$targRecyc[critical.trials$exp == "3" | critical.trials$exp == "4"] <- "No"
+critical.trials$targRecyc[critical.trials$exp_renum == "1" | critical.trials$exp_renum == "4"] <- "Yes"
+critical.trials$targRecyc[critical.trials$exp_renum == "2" | critical.trials$exp_renum == "3"] <- "No"
 critical.trials$targRecyc <- as.factor(critical.trials$targRecyc)
 
 critical.trials$nrTargTalkMixed <- NA
-critical.trials$nrTargTalkMixed[critical.trials$exp == "1" | critical.trials$exp == "3"] <- "Two"
-critical.trials$nrTargTalkMixed[critical.trials$exp == "2" | critical.trials$exp == "4"] <- "One"
+critical.trials$nrTargTalkMixed[critical.trials$exp_renum == "1" | critical.trials$exp_renum == "3"] <- "Two"
+critical.trials$nrTargTalkMixed[critical.trials$exp_renum == "2" | critical.trials$exp_renum == "4"] <- "One"
 critical.trials$nrTargTalkMixed <- as.factor(critical.trials$nrTargTalkMixed)
 
 # Omnibus
 rt_model_slope_gamma_all <- mixed(corrected_rt ~ Condition * targRecyc * nrTargTalkMixed + (Condition||subject_nr),
-                          data=critical.trials,family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                          data=critical.trials,family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                           control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 rt_model_int_gamma_all <-mixed(corrected_rt ~ Condition * targRecyc * nrTargTalkMixed + (1|subject_nr),
-                               data=critical.trials,family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                               data=critical.trials,family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                                control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 anova(rt_model_slope_gamma_all,rt_model_int_gamma_all) # slope model has better fit.
 
 
 rt_model_slope_invGauss_all <- mixed(corrected_rt ~ Condition * targRecyc * nrTargTalkMixed + (Condition||subject_nr),
-                                  data=critical.trials,family=inverse.gaussian(link="identity"),method="LRT",expand_re = TRUE,
+                                  data=critical.trials,family=inverse.gaussian(link="identity"),method="LRT",exp_renumand_re = TRUE,
                                   control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 rt_model_int_invGauss_all <-mixed(corrected_rt ~ Condition * targRecyc * nrTargTalkMixed + (1|subject_nr),
-                               data=critical.trials,family=inverse.gaussian(link="identity"),method="LRT",expand_re = TRUE,
+                               data=critical.trials,family=inverse.gaussian(link="identity"),method="LRT",exp_renumand_re = TRUE,
                                control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 anova(rt_model_slope_invGauss_all,rt_model_int_invGauss_all) # slope model has better fit.
@@ -274,16 +281,16 @@ anova(rt_model_slope_invGauss_all, rt_model_slope_gamma_all) #gamma distribution
 
 rt_model_slope_gamma_all
 
-# Break this down by experiment.
+# Break this down by experiment
 
 
-# Experiment 1
+# experiment 1
 rt_model_slope_E1 <- mixed(corrected_rt ~ Condition + (Condition||subject_nr),
-                                 data=subset(critical.trials, exp=="1"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                                 data=subset(critical.trials, exp_renum=="1"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                            control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 rt_model_intercept_E1 <- mixed(corrected_rt ~ Condition + (1|subject_nr),
-                           data=subset(critical.trials, exp=="1"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                           data=subset(critical.trials, exp_renum=="1"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                            control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 # Compare models.
@@ -292,13 +299,13 @@ anova(rt_model_intercept_E1,rt_model_slope_E1) # slope model has better fit.
 rt_model_slope_E1
 summary(rt_model_slope_E1)
 
-# Experiment 2.
+# experiment 2.
 rt_model_slope_E2 <- mixed(corrected_rt ~ Condition + (Condition||subject_nr),
-                           data=subset(critical.trials, exp=="2"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                           data=subset(critical.trials, exp_renum=="2"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                            control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 rt_model_intercept_E2 <- mixed(corrected_rt ~ Condition + (1|subject_nr),
-                               data=subset(critical.trials, exp=="2"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                               data=subset(critical.trials, exp_renum=="2"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                                control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 # Compare models.
@@ -307,13 +314,13 @@ anova(rt_model_intercept_E2,rt_model_slope_E2) # slope model has better fit.
 rt_model_slope_E2
 summary(rt_model_slope_E2)
 
-# Experiment 3.
+# experiment 3.
 rt_model_slope_E3 <- mixed(corrected_rt ~ Condition + (Condition||subject_nr),
-                           data=subset(critical.trials, exp=="3"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                           data=subset(critical.trials, exp_renum=="3"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                            control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 rt_model_intercept_E3 <- mixed(corrected_rt ~ Condition + (1|subject_nr),
-                               data=subset(critical.trials, exp=="3"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                               data=subset(critical.trials, exp_renum=="3"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                                control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 # Compare models.
@@ -322,13 +329,13 @@ anova(rt_model_intercept_E3,rt_model_slope_E3) # slope model has better fit.
 rt_model_slope_E3
 summary(rt_model_slope_E3)
 
-# Experiment 4.
+# experiment 4.
 rt_model_slope_E4 <- mixed(corrected_rt ~ Condition + (Condition||subject_nr),
-                           data=subset(critical.trials, exp=="4"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                           data=subset(critical.trials, exp_renum=="4"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                            control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 rt_model_intercept_E4 <- mixed(corrected_rt ~ Condition + (1|subject_nr),
-                               data=subset(critical.trials, exp=="4"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
+                               data=subset(critical.trials, exp_renum=="4"),family=Gamma(link="identity"),method="LRT",exp_renumand_re = TRUE,
                                control = glmerControl(optimizer="bobyqa",calc.derivs = FALSE, optCtrl = list(maxfun = 1500000)))
 
 # Compare models.
@@ -338,11 +345,9 @@ rt_model_slope_E4
 summary(rt_model_slope_E4)
 
 # Are overall slower RT's in E4 significantly different from previous experiments? Not sure if needed.
-# RT_overall <- glmer(corrected_rt ~ exp + (1|subject_nr),data=critical.trials,family=Gamma(link="identity"))
+# RT_overall <- glmer(corrected_rt ~ exp_renum + (1|subject_nr),data=critical.trials,family=Gamma(link="identity"))
 # summary(RT_overall)
 # 
 # # Post hoc comparisons.
-# posthoc <- multcomp::glht(RT_overall, linfct=multcomp::mcp(exp="Tukey"))
+# posthoc <- multcomp::glht(RT_overall, linfct=multcomp::mcp(exp_renum="Tukey"))
 # summary(posthoc,test=multcomp::adjusted("bonferroni"))
-
-save.image("/Volumes/netapp/Research/MyersLab/Sahil/TalkerTeam/GitHubRepository/TalkerTeam/analysis/Results.03132020.RData")
