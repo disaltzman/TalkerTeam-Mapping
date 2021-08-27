@@ -18,6 +18,7 @@ library(lemon)
 # Analyses.
 library(afex)
 library(lme4)
+library(emmeans)
 
 theme_set(theme_bw())
 
@@ -287,7 +288,7 @@ rt_summary_byTrial <- Rmisc::summarySE(data=critical.trials,measurevar = "correc
 
 ggplot(rt_summary_byTrial,aes(x=Trial,y=corrected_rt,color=Condition)) + 
   geom_point(aes(color=Condition,group=Condition),size=2) + geom_line(aes(color=Condition,group=Condition),size=1.25) +
-  facet_grid(~exp_renum) +
+  facet_wrap(~exp_renum,ncol=2) +
   scale_color_manual(values=c("#ff6e26","#26b7ff")) +
   theme(text=element_text(size=18)) + xlab("Trial number") + ylab("Reaction time (ms)")
 
@@ -336,13 +337,16 @@ rt_model_int_invGauss_all <-mixed(corrected_rt ~ Condition * targRecyc * nrTargT
 
 anova(rt_model_slope_invGauss_all,rt_model_int_invGauss_all) # slope model has better fit.
 
-anova(rt_model_slope_invGauss_all, rt_model_slope_gamma_all) #gamma distribution is better
+anova(rt_model_slope_invGauss_all, rt_model_slope_gamma_all) # gamma distribution is better
 
 rt_model_slope_gamma_all
 
+emmeans(rt_model_slope_gamma_all,pairwise~Condition|nrTargTalkMixed)
+emmeans(rt_model_slope_gamma_all,pairwise~nrTargTalkMixed|Condition)
+
+emmip(rt_model_slope_gamma_all,~Condition|nrTargTalkMixed)
+
 # Break this down by experiment
-
-
 # experiment 1
 rt_model_slope_E1 <- mixed(corrected_rt ~ Condition + (Condition||subject_nr),
                                  data=subset(critical.trials, exp_renum=="1"),family=Gamma(link="identity"),method="LRT",expand_re = TRUE,
